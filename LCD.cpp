@@ -1,48 +1,27 @@
-/*
-   LCD.cpp  - Library for SPI-type LCDs
-
-   Created by Neal Pisenti, 2015
-   JQI - Joint Quantum Institute
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- */
-
 #include "LCD.h"
 
+LCD::LCD(int pin_reset, int pin_register_select, int pin_chip_select) {
+    pin_reset_ = pin_reset;
+    pin_register_select_ = pin_register_select;
+    pin_chip_select_ = pin_chip_select;
+    SPI_settings_lcd_ = SPISettings(500000, MSBFIRST, SPI_MODE0);
 
-LCD::LCD(int reset, int register_select, int cs){
-    _reset = reset;
-    _rs = register_select;
-    _cs = cs;
+    pinMode(pin_reset_, OUTPUT);
+    pinMode(pin_register_select_, OUTPUT);
+    pinMode(pin_chip_select_, OUTPUT);
 
-    pinMode(_reset, OUTPUT);
-    pinMode(_rs, OUTPUT);
-    pinMode(_cs, OUTPUT);
-
-    digitalWrite(_reset, HIGH);
-    digitalWrite(_rs, HIGH);
-    digitalWrite(_cs, HIGH);
+    digitalWrite(pin_reset_, HIGH);
+    digitalWrite(pin_register_select_, HIGH);
+    digitalWrite(pin_chip_select_, HIGH);
 
 }
 
 void LCD::init(){
-    digitalWrite(_reset, LOW);
+    digitalWrite(pin_reset_, LOW);
     delay(2);
     LCD::write_cmd(0x30); // wakeup
     delay(2);
-    digitalWrite(_reset, HIGH);
+    digitalWrite(pin_reset_, HIGH);
     LCD::write_cmd(0x30); // wakeup
     LCD::write_cmd(0x30); // wakeup
 
@@ -59,41 +38,86 @@ void LCD::init(){
     delay(10);
 }
 
+
+
+/*
+    Base methods (write commands for other types are derived from these)
+*/
 void LCD::write(char data){
-    digitalWrite(_cs, LOW);
-    digitalWrite(_rs, HIGH);
+    SPI.beginTransaction(SPI_settings_lcd_);
+  
+    pinMode(pin_chip_select_, OUTPUT); //This line is only needed when pin 12 (MISO) is used as the LCD chip select
+  
+    digitalWrite(pin_chip_select_, LOW);
+    digitalWrite(pin_register_select_, HIGH);
     delay(2);
     SPI.transfer(data);
     delay(2);
-    digitalWrite(_cs, HIGH);
+    digitalWrite(pin_chip_select_, HIGH);
+    SPI.endTransaction();
+    
 }
 
-void LCD::write(char * text, byte addr){
-
-    addr += 0x80;   // additional bit set in DB7;
-    LCD::write_cmd(addr);
-
-    int i = 0;
-    while(text[i] != '\0' && i < 16){
-        LCD::write(text[i]);
-        i++;
-    }
+void LCD::write_cmd(byte data){
+    
+    SPI.beginTransaction(SPI_settings_lcd_);
+    
+    pinMode(pin_chip_select_, OUTPUT); //This line is only needed when pin 12 (MISO) is used as the LCD chip select
+    
+    digitalWrite(pin_chip_select_, LOW);
+    digitalWrite(pin_register_select_, LOW);
+    
+    delay(2);
+    SPI.transfer(data);
+    delay(2);
+    SPI.endTransaction();
+    digitalWrite(pin_chip_select_, HIGH);
 }
 
+
+
+/*
+    Derived methods (in order of increasing abstraction)
+*/
 void LCD::write(dtext_t text){
     LCD::write(text[0], 0x00);
     LCD::write(text[1], 0x40);
 }
 
-void LCD::write_cmd(byte data){
-    digitalWrite(_cs, LOW);
-    digitalWrite(_rs, LOW);
-    delay(2);
-    SPI.transfer(data);
-    delay(2);
-    digitalWrite(_cs, HIGH);
+void LCD::write(const char text[], byte addr) {
+    addr += 0x80;   // additional bit set in DB7;
+    LCD::write_cmd(addr);
+    for(int i = 0; text[i] != '\0' && i < 16; i++){
+        LCD::write(text[i]);
+    }
 }
 
+void LCD::write(String text, byte addr) {
+    LCD:write(text.c_str(), addr);
+}
+
+void LCD::flash_string(String text, byte position) {
+    for(int i = 0; i < 5; i++) {
+            LCD::write(text, position);
+            delay(100);
+            LCD::clear();
+        }
+        delay(300);
+}
+
+
+
+/*
+    Clearing the display
+*/
 void LCD::clear(){
     LCD::write_cmd(0x01);
+}
+
+void LCD::clear_1st_line(){
+    LCD::write("                ", 0x00);
+}
+
+void LCD::clear_2nd_line(){
+    LCD::write("                ", 0x40);
 }
