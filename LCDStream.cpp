@@ -43,7 +43,7 @@
 #endif
 
 //extern "C" void __cxa_pure_virtual() { while (1); }
-#include "LCD_stream.h"
+#include "LCDStream.h"
 
 
 // CLASS CONSTRUCTORS
