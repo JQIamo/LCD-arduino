@@ -11,6 +11,9 @@
   */
 
 
+  // comment
+
+
 #ifndef LCD_ST7032_H
 #define LCD_ST7032_H
 
