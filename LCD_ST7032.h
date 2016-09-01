@@ -93,9 +93,9 @@ void LCD_ST7032::send(uint8_t value, uint8_t mode){
   SPI.beginTransaction(_spi_settings);
   digitalWrite(_cs, LOW);
   digitalWrite(_rs, send_mode);
-  //delay(2); // do we need this?
+  delay(2); // do we need this?
   SPI.transfer(value);
-  //delay(2); // do we need this?
+  delay(2); // do we need this?
   SPI.endTransaction();
   digitalWrite(_cs, HIGH);
   interrupts();
